@@ -87,6 +87,11 @@ export class GameBridge extends EventEmitter {
     });
   }
 
+  /** 不要回复的通知帧（不带 id）；未连接时丢弃。 */
+  notify(payload: Record<string, unknown>): void {
+    if (this.socket && this.hello) this.socket.write(`${JSON.stringify(payload)}\n`);
+  }
+
   private dial(port: number): void {
     if (this.closed) return;
     const socket = createConnection({ host: '127.0.0.1', port });

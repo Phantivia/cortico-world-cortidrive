@@ -7,6 +7,8 @@ export interface CortiDriveConfigSection {
   port: number;
   /** 控制台「启动游戏」打开的 exe：装了本插件的那份游戏副本。 */
   gameExe: string;
+  /** vtuber World 演出流（/stream）地址：按可缇说话的时段让游戏里妹妹的嘴动；留空关闭。 */
+  mouthSyncUrl: string;
   /** 截图的最大宽度，像素。 */
   captureWidth: number;
   /** 场景载入、情境区、画面提示、违规倒计时、地雷爆炸、碰撞、关卡结束七类事件是否附带当时的游戏截图。 */
@@ -27,6 +29,7 @@ export const CORTIDRIVE_DEFAULTS: CortiDriveConfigSection = {
   enabled: false,
   port: 47632,
   gameExe: 'L:\\CorticoGames\\teach corti to drive Demo\\teach_sister_to_drive.exe',
+  mouthSyncUrl: 'http://127.0.0.1:7792/stream',
   captureWidth: 960,
   attachImages: true,
   minimap: true,
@@ -56,6 +59,12 @@ export const CORTIDRIVE_CONFIG_GROUP: ConfigGroup = {
         title: '游戏程序',
         description: '控制台「启动游戏」打开的 teach_sister_to_drive.exe，指向装了本插件的那份游戏副本；Steam 客户端须在运行。',
         'x-path': { kind: 'file' },
+        'x-hot': true,
+      },
+      'worlds.cortidrive.mouthSyncUrl': {
+        type: 'string',
+        title: '嘴型同步演出流',
+        description: 'vtuber World 的演出流地址（端口见 vtuber 的演出流端口）。游戏连着时订阅，可缇说话时游戏里妹妹的嘴跟着动；订阅期间 vtuber 会把它算作在播。留空关闭。',
         'x-hot': true,
       },
       'worlds.cortidrive.captureWidth': {

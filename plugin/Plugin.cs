@@ -62,6 +62,7 @@ namespace CorticoCortiDrive
             // LoadingSceneManager turns it off when its loading jobs finish.
             if (!Application.runInBackground) Application.runInBackground = true;
             _view.Tick();
+            Mouth.Tick();
             if (Time.unscaledTime >= _nextPromptCheck)
             {
                 _nextPromptCheck = Time.unscaledTime + 1f;
@@ -111,6 +112,7 @@ namespace CorticoCortiDrive
         {
             if (mode != LoadSceneMode.Single) return;
             Drive.Reset();
+            Mouth.SceneLoaded();
             Event("scene", new JObject { ["state"] = State() });
         }
 
@@ -143,6 +145,10 @@ namespace CorticoCortiDrive
                     else Reply(frame, true, null, body);
                     break;
                 }
+                case "mouth":
+                    // A notification without id: the bot's voice speaking windows, sent as its subtitles update.
+                    Mouth.Set(frame["windows"] as JArray);
+                    break;
                 case "look": StartCoroutine(Look(frame)); break;
                 case "stage": Stage(frame); break;
                 default: Reply(frame, false, "unknown kind " + (string)frame["kind"]); break;

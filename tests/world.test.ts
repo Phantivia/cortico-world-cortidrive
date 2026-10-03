@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { mkdtempSync, rmSync } from 'node:fs';
+import { createServer as createHttpServer } from 'node:http';
 import { createServer, type Server, type Socket } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -57,10 +58,10 @@ afterEach(() => {
   rmSync(scratchDir, { recursive: true, force: true });
 });
 
-async function started() {
+async function started(extra: Record<string, unknown> = { mouthSyncUrl: '' }) {
   const port = await plugin.listen();
   const ctx = fakeWorldContext(CORTIDRIVE, { scratchDir });
-  ctx.persist({ port, attachImages: false });
+  ctx.persist({ port, attachImages: false, ...extra });
   const world = CORTIDRIVE.create(ctx);
   const host = new FakeHost();
   await world.start(host);
@@ -97,5 +98,23 @@ describe('cortidrive World', () => {
     await until(() => host.events.some((e) => e.type === 'cortidrive.script'));
     expect(host.events.find((e) => e.type === 'cortidrive.script')!.text).toContain('「知道了。现在出发！」');
     await world.stop();
+  });
+
+  it('游戏连着时订阅 vtuber 演出流，字幕的发声区间转给插件，打断时清空', async () => {
+    const stream = createHttpServer((_req, res) => {
+      res.writeHead(200, { 'Content-Type': 'text/event-stream' });
+      res.write(': pad\n\n');
+      res.write(`data: ${JSON.stringify({ type: 'subtitle', text: '知道啦', basis: 'estimate', cues: [{ text: '知道啦', atMs: 120, durMs: 900, speakMs: 700 }] })}\n\n`);
+      res.write(`data: ${JSON.stringify({ type: 'subtitle.cut' })}\n\n`);
+    });
+    const streamPort = await new Promise<number>((r) => stream.listen(0, '127.0.0.1', () => r((stream.address() as { port: number }).port)));
+    const { world } = await started({ mouthSyncUrl: `http://127.0.0.1:${streamPort}/stream` });
+    await until(() => plugin.received.filter((f) => f.kind === 'mouth').length === 2);
+    const [speak, cut] = plugin.received.filter((f) => f.kind === 'mouth');
+    expect(speak.windows).toEqual([{ atMs: 120, ms: 700 }]);
+    expect(cut.windows).toEqual([]);
+    await world.stop();
+    stream.closeAllConnections();
+    stream.close();
   });
 });

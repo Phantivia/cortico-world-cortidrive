@@ -12,6 +12,7 @@ import type { BlobInput, ToolDef, ToolOutcome, TriggerMode, World, WorldConsoleD
 import { nowIso } from 'cortico/core/util.ts';
 import { CORTIDRIVE_CONFIG_GROUP, type CortiDriveConfigSection } from './config.ts';
 import { GameBridge, PROTOCOL, type GameFrame, type GameState } from './bridge.ts';
+import { MouthSync } from './mouth.ts';
 
 const ENV_PROMPT_FILE = fileURLToPath(new URL('./ENV_PROMPT.md', import.meta.url));
 const TAG = '[教可缇开车]';
@@ -192,6 +193,11 @@ export interface CortiDriveWorldOptions {
 export class CortiDriveWorld implements World {
   readonly id = 'cortidrive';
   private readonly bridge = new GameBridge();
+  private readonly mouth = new MouthSync(
+    () => this.opts.cfg.mouthSyncUrl,
+    (windows) => this.bridge.notify({ kind: 'mouth', windows }),
+    () => this.host?.log,
+  );
   private host: WorldHost | null = null;
   private lamp: 'offline' | 'loading' | 'online' | 'error' = 'offline';
   private detail = '';
@@ -210,6 +216,7 @@ export class CortiDriveWorld implements World {
     this.bridge.on('hello', (f: GameFrame) => void this.onHello(f));
     this.bridge.on('event', (f: GameFrame) => void this.onGameEvent(f));
     this.bridge.on('disconnect', () => {
+      this.mouth.stop();
       this.lamp = 'loading';
       this.detail = '等待游戏';
       void this.push('connection', `${TAG} 游戏连接已断开，插件可连时自动重连。`, 'flush', true);
@@ -256,6 +263,7 @@ export class CortiDriveWorld implements World {
   async stop(): Promise<void> {
     if (this.liveTimer) clearTimeout(this.liveTimer);
     this.liveTimer = null;
+    this.mouth.stop();
     this.bridge.close();
     this.host = null;
     this.lamp = 'offline';
@@ -298,6 +306,7 @@ export class CortiDriveWorld implements World {
     this.scene = f.state?.scene ?? '';
     this.driverInput = f.state?.driverInput ?? false;
     this.sendConfig();
+    this.mouth.start();
     await this.push('connection', `${TAG} 游戏已连接。\n${renderState(f.state)}`, 'flush', true);
   }
 
