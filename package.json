@@ -1,0 +1,44 @@
+{
+  "name": "cortico-world-cortidrive",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Cortico World for Teach my little sister how to drive, with the bot in the driver seat: a BepInEx plugin replaces the sister model with the bot's drive tool and turns game calls into events",
+  "license": "MIT",
+  "keywords": [
+    "cortico-world",
+    "cortico"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "packageManager": "pnpm@11.5.0",
+  "main": "./src/index.ts",
+  "cortico": {
+    "kind": "world",
+    "api": 5,
+    "displayName": "教可缇开车",
+    "consoleClient": "dist/console.js"
+  },
+  "files": [
+    "src",
+    "dist/console.js",
+    "plugin/*.cs",
+    "plugin/*.csproj",
+    "docs",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "node scripts/build-console.mjs",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.console.json",
+    "build:plugin": "dotnet build plugin -c Release -o dist/plugin"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "cortico": "^0.1.5",
+    "esbuild": "^0.28.2",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  }
+}
