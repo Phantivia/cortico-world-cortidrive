@@ -2,8 +2,13 @@
   "name": "cortico-world-cortidrive",
   "version": "0.1.0",
   "type": "module",
-  "description": "Cortico World for Teach my little sister how to drive, with the bot in the driver seat: a BepInEx plugin replaces the sister model with the bot's drive tool and turns game calls into events",
+  "description": "Cortico World for Teach my little sister how to drive, with the bot in the driver seat: a BepInEx plugin replaces the sister model with the bot's drive tool and turns game calls into events. 此乃直播测试验证之后的world，和其他 Persona / 非直播场景的兼容性有待测试。",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Phantivia/cortico-world-cortidrive.git"
+  },
+  "homepage": "https://github.com/Phantivia/cortico-world-cortidrive#readme",
   "keywords": [
     "cortico-world",
     "cortico"
@@ -25,7 +30,8 @@
     "plugin/*.cs",
     "plugin/*.csproj",
     "docs",
-    "README.md"
+    "README.md",
+    "LICENSE"
   ],
   "scripts": {
     "build": "node scripts/build-console.mjs",

@@ -1,5 +1,7 @@
 # cortico-world-cortidrive
 
+> 此乃直播测试验证之后的world，和其他 Persona / 非直播场景的兼容性有待测试。
+
 Owner: `src/definition.ts`, `plugin/`.
 
 教可缇开车: Cortico World for *Teach my little sister how to drive* (Steam, Unity Mono build) with the bot in the driver seat. The person in the passenger seat gives instructions by voice through the asr World; the bot drives with `cortidrive_drive` and talks through its VTuber. A BepInEx 5 plugin replaces the game's sister model with the bot's drive tool and serves game events over `127.0.0.1` TCP. The sister version, where the bot instructs and the game's model drives, is `cortico-world-sisterdrive`.
