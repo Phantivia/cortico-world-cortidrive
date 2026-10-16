@@ -8,7 +8,7 @@ import { execFile, spawn } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { basename, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import type { BlobInput, ToolDef, ToolOutcome, TriggerMode, World, WorldConsoleDecl, WorldHost } from 'cortico/core/types.ts';
+import type { BlobInput, ToolDef, ToolOutcome, TriggerMode, World, WorldWebUiDecl, WorldHost } from 'cortico/core/types.ts';
 import { nowIso } from 'cortico/core/util.ts';
 import { CORTIDRIVE_CONFIG_GROUP, type CortiDriveConfigSection } from './config.ts';
 import { GameBridge, PROTOCOL, type GameFrame, type GameState } from './bridge.ts';
@@ -185,6 +185,54 @@ function gameRunning(exe: string): Promise<boolean> {
   });
 }
 
+const DRIVE_STEP_SCHEMA = {
+  type: 'object',
+  additionalProperties: false,
+  properties: {
+    speed: { type: 'number', description: 'Target speed in km/h: positive forward, 0 brakes to a stop, negative reverses. Omit to keep the current one.' },
+    steer: { type: 'number', minimum: -1, maximum: 1, description: 'Steering wheel, -1 full left … 0 straight … 1 full right. Omit to keep the current one.' },
+    until: { type: 'string', enum: ['seconds', 'distance', 'turned', 'stopped', 'goal', 'none'], description: 'When this step ends and the next starts: after `value` seconds, after `value` metres driven, after the heading turned `value` degrees, once stopped, within `value` metres of the parking goal, or none = hold until your next drive call. Default none.' },
+    value: { type: 'number', description: 'Number for seconds / distance / turned / goal.' },
+  },
+};
+
+const DRIVE_TOOL: Omit<ToolDef, 'handler'> = {
+  name: 'cortidrive_drive',
+  description: 'Drive the car: you are in the driver seat. Each call is one turn of yours in the game. steps run in order on the car (a new call replaces a running plan); action does a tutorial step; line is what you say with it, so the game waits for you to finish before its next scripted beat.',
+  tags: ['act'],
+  parameters: {
+    type: 'object',
+    additionalProperties: false,
+    properties: {
+      steps: { type: 'array', items: DRIVE_STEP_SCHEMA, description: 'Speed and steering plan. Empty or omitted leaves the car as it is.' },
+      action: { type: 'string', enum: Object.keys(TUTORIAL_ACTION), description: 'Tutorial stage only: fasten_seatbelt, start_engine, or accelerate (set off).' },
+      line: { type: 'string', description: 'The words you say with this turn, as spoken in vtuber_act. Optional.' },
+    },
+  },
+};
+
+const LOOK_TOOL: Omit<ToolDef, 'handler'> = {
+  name: 'cortidrive_look',
+  description: 'Current game screen plus scene, speed, emotion, fines, collisions, obstacles ahead, parking goal, and the situation text the game prepares for this stage.',
+  tags: ['read', 'snapshot'],
+  parameters: { type: 'object', additionalProperties: false, properties: {} },
+};
+
+const STAGE_TOOL: Omit<ToolDef, 'handler'> = {
+  name: 'cortidrive_stage',
+  description: 'Stage flow: restart = replay the current stage; next = load the next stage; menu = back to the main menu; continue = from the main menu, resume at the saved stage.',
+  tags: ['act'],
+  barrierAfter: true,
+  parameters: {
+    type: 'object',
+    additionalProperties: false,
+    properties: { action: { type: 'string', enum: ['restart', 'next', 'menu', 'continue'] } },
+    required: ['action'],
+  },
+};
+
+export const CORTIDRIVE_TOOL_DECLS: ReadonlyArray<Omit<ToolDef, 'handler'>> = [DRIVE_TOOL, LOOK_TOOL, STAGE_TOOL];
+
 export interface CortiDriveWorldOptions {
   cfg: CortiDriveConfigSection;
   timezone: string;
@@ -231,7 +279,7 @@ export class CortiDriveWorld implements World {
     return [this.driveTool(), this.lookTool(), this.stageTool()];
   }
 
-  console(): WorldConsoleDecl {
+  webUi(): WorldWebUiDecl {
     return {
       lamps: [{ label: '游戏插件', state: this.lamp, hint: this.detail || undefined }],
       badges: [{ label: '场景', value: this.scene || '—' }],
@@ -435,29 +483,8 @@ export class CortiDriveWorld implements World {
   }
 
   private driveTool(): ToolDef {
-    const step = {
-      type: 'object',
-      additionalProperties: false,
-      properties: {
-        speed: { type: 'number', description: 'Target speed in km/h: positive forward, 0 brakes to a stop, negative reverses. Omit to keep the current one.' },
-        steer: { type: 'number', minimum: -1, maximum: 1, description: 'Steering wheel, -1 full left … 0 straight … 1 full right. Omit to keep the current one.' },
-        until: { type: 'string', enum: ['seconds', 'distance', 'turned', 'stopped', 'goal', 'none'], description: 'When this step ends and the next starts: after `value` seconds, after `value` metres driven, after the heading turned `value` degrees, once stopped, within `value` metres of the parking goal, or none = hold until your next drive call. Default none.' },
-        value: { type: 'number', description: 'Number for seconds / distance / turned / goal.' },
-      },
-    };
     return {
-      name: 'cortidrive_drive',
-      description: 'Drive the car: you are in the driver seat. Each call is one turn of yours in the game. steps run in order on the car (a new call replaces a running plan); action does a tutorial step; line is what you say with it, so the game waits for you to finish before its next scripted beat.',
-      tags: ['act'],
-      parameters: {
-        type: 'object',
-        additionalProperties: false,
-        properties: {
-          steps: { type: 'array', items: step, description: 'Speed and steering plan. Empty or omitted leaves the car as it is.' },
-          action: { type: 'string', enum: Object.keys(TUTORIAL_ACTION), description: 'Tutorial stage only: fasten_seatbelt, start_engine, or accelerate (set off).' },
-          line: { type: 'string', description: 'The words you say with this turn, as spoken in vtuber_act. Optional.' },
-        },
-      },
+      ...DRIVE_TOOL,
       handler: async (args) => this.drive(args as { steps?: DriveStep[]; action?: string; line?: string }),
     };
   }
@@ -480,10 +507,7 @@ export class CortiDriveWorld implements World {
 
   private lookTool(): ToolDef {
     return {
-      name: 'cortidrive_look',
-      description: 'Current game screen plus scene, speed, emotion, fines, collisions, obstacles ahead, parking goal, and the situation text the game prepares for this stage.',
-      tags: ['read', 'snapshot'],
-      parameters: { type: 'object', additionalProperties: false, properties: {} },
+      ...LOOK_TOOL,
       handler: async () => {
         const missing = this.requireGame();
         if (missing) return missing;
@@ -503,16 +527,7 @@ export class CortiDriveWorld implements World {
 
   private stageTool(): ToolDef {
     return {
-      name: 'cortidrive_stage',
-      description: 'Stage flow: restart = replay the current stage; next = load the next stage; menu = back to the main menu; continue = from the main menu, resume at the saved stage.',
-      tags: ['act'],
-      barrierAfter: true,
-      parameters: {
-        type: 'object',
-        additionalProperties: false,
-        properties: { action: { type: 'string', enum: ['restart', 'next', 'menu', 'continue'] } },
-        required: ['action'],
-      },
+      ...STAGE_TOOL,
       handler: async (args) => {
         const missing = this.requireGame();
         if (missing) return missing;

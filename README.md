@@ -15,7 +15,7 @@ The plugin changes how the game plays (no model, no game voice, no microphone), 
 3. Copy `dist/plugin/CorticoCortiDrive.dll` to `<copy>/BepInEx/plugins/`.
 4. Start the copy once; `BepInEx/LogOutput.log` shows `listening on 127.0.0.1:47632`. The port lives in `BepInEx/config/ai.cortico.cortidrive.cfg` and must match `worlds.cortidrive.port`.
 
-Set `worlds.cortidrive.gameExe` to the copy's exe; the World page's 游戏 panel (`pnpm build` produces its `dist/console.js`) starts it with Steam running. Both copies share the game's save data under `AppData/LocalLow/tsd`.
+Set `worlds.cortidrive.gameExe` to the copy's exe; the World page's 游戏 panel (`pnpm build` produces its `dist/webui.js`) starts it with Steam running. Both copies share the game's save data under `AppData/LocalLow/tsd`.
 
 ## What the World does
 

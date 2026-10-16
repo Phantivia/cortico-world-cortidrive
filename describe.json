@@ -1,0 +1,261 @@
+{
+  "tools": [
+    {
+      "name": "cortidrive_drive",
+      "description": "Drive the car: you are in the driver seat. Each call is one turn of yours in the game. steps run in order on the car (a new call replaces a running plan); action does a tutorial step; line is what you say with it, so the game waits for you to finish before its next scripted beat.",
+      "parameters": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "steps": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "speed": {
+                  "type": "number",
+                  "description": "Target speed in km/h: positive forward, 0 brakes to a stop, negative reverses. Omit to keep the current one."
+                },
+                "steer": {
+                  "type": "number",
+                  "minimum": -1,
+                  "maximum": 1,
+                  "description": "Steering wheel, -1 full left … 0 straight … 1 full right. Omit to keep the current one."
+                },
+                "until": {
+                  "type": "string",
+                  "enum": [
+                    "seconds",
+                    "distance",
+                    "turned",
+                    "stopped",
+                    "goal",
+                    "none"
+                  ],
+                  "description": "When this step ends and the next starts: after `value` seconds, after `value` metres driven, after the heading turned `value` degrees, once stopped, within `value` metres of the parking goal, or none = hold until your next drive call. Default none."
+                },
+                "value": {
+                  "type": "number",
+                  "description": "Number for seconds / distance / turned / goal."
+                }
+              }
+            },
+            "description": "Speed and steering plan. Empty or omitted leaves the car as it is."
+          },
+          "action": {
+            "type": "string",
+            "enum": [
+              "fasten_seatbelt",
+              "start_engine",
+              "accelerate"
+            ],
+            "description": "Tutorial stage only: fasten_seatbelt, start_engine, or accelerate (set off)."
+          },
+          "line": {
+            "type": "string",
+            "description": "The words you say with this turn, as spoken in vtuber_act. Optional."
+          }
+        }
+      },
+      "tags": [
+        "act"
+      ],
+      "summary": {
+        "zh": "bot 坐驾驶座开车：按计划控制车速和方向，教程关做系安全带、发动引擎等动作，可同时说一句台词。",
+        "en": "Drives the car from the driver seat: runs a speed and steering plan, does tutorial actions such as fastening the seatbelt or starting the engine, and can say a line with it."
+      }
+    },
+    {
+      "name": "cortidrive_look",
+      "description": "Current game screen plus scene, speed, emotion, fines, collisions, obstacles ahead, parking goal, and the situation text the game prepares for this stage.",
+      "parameters": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {}
+      },
+      "tags": [
+        "read",
+        "snapshot"
+      ],
+      "summary": {
+        "zh": "截一张游戏画面，附场景、车速、表情、罚款、碰撞次数、前方障碍、停车目标和本关情境。",
+        "en": "Takes a screenshot of the game with the scene, speed, mood, fines, collision count, obstacles ahead, the parking goal and the stage's situation text."
+      }
+    },
+    {
+      "name": "cortidrive_stage",
+      "description": "Stage flow: restart = replay the current stage; next = load the next stage; menu = back to the main menu; continue = from the main menu, resume at the saved stage.",
+      "parameters": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "action": {
+            "type": "string",
+            "enum": [
+              "restart",
+              "next",
+              "menu",
+              "continue"
+            ]
+          }
+        },
+        "required": [
+          "action"
+        ]
+      },
+      "tags": [
+        "act"
+      ],
+      "summary": {
+        "zh": "重开本关、进下一关、回主菜单，或在主菜单继续存档的关卡。",
+        "en": "Restarts the stage, loads the next one, goes back to the main menu, or continues the saved stage from the main menu."
+      }
+    }
+  ],
+  "events": [
+    {
+      "type": "cortidrive.connection",
+      "description": {
+        "zh": "游戏插件连上（附当前状态）或断开。",
+        "en": "The game plugin connected (with the current state) or disconnected."
+      },
+      "trigger": "flush"
+    },
+    {
+      "type": "cortidrive.view",
+      "description": {
+        "zh": "关卡中定时截的实时画面与车况，随下一次唤醒送达；bot 太久没有驾驶操作时单独唤醒一次。",
+        "en": "A periodic live screenshot with the car's state during a stage, delivered with the next wake-up; it wakes the bot once when the bot has not driven for a while."
+      },
+      "tags": [
+        "snapshot"
+      ]
+    },
+    {
+      "type": "cortidrive.scene",
+      "description": {
+        "zh": "载入了新场景。",
+        "en": "A new scene loaded."
+      },
+      "trigger": "flush"
+    },
+    {
+      "type": "cortidrive.plan",
+      "description": {
+        "zh": "驾驶计划开始、走到某一步、走完或被新的操作打断。",
+        "en": "A driving plan started, reached a step, finished or was interrupted by a new drive call."
+      }
+    },
+    {
+      "type": "cortidrive.script",
+      "description": {
+        "zh": "游戏剧本里驾驶座上的妹妹（现在是 bot）这时说的台词。",
+        "en": "A line the game's script gives the sister in the driver seat, which is now the bot."
+      },
+      "trigger": "flush"
+    },
+    {
+      "type": "cortidrive.emotion",
+      "description": {
+        "zh": "bot 在游戏里的表情变了。",
+        "en": "The bot's expression in the game changed."
+      },
+      "trigger": "debounce"
+    },
+    {
+      "type": "cortidrive.mission",
+      "description": {
+        "zh": "游戏给出的任务。",
+        "en": "A mission the game set."
+      },
+      "trigger": "flush"
+    },
+    {
+      "type": "cortidrive.brief",
+      "description": {
+        "zh": "本关游戏写给原妹妹模型的说明节选：目标与动作刻度。",
+        "en": "An excerpt of this stage's instructions written for the original sister model: the goal and action scale."
+      },
+      "trigger": "flush"
+    },
+    {
+      "type": "cortidrive.guide",
+      "description": {
+        "zh": "画面上的提示。",
+        "en": "An on-screen hint."
+      },
+      "trigger": "flush"
+    },
+    {
+      "type": "cortidrive.situation",
+      "description": {
+        "zh": "车进入情境区，附游戏写给原妹妹模型的情境描述。",
+        "en": "The car entered a situation zone, with the game's situation text for the original sister model."
+      },
+      "trigger": "flush"
+    },
+    {
+      "type": "cortidrive.popup",
+      "description": {
+        "zh": "游戏弹窗。",
+        "en": "A game popup."
+      },
+      "trigger": "flush"
+    },
+    {
+      "type": "cortidrive.fine",
+      "description": {
+        "zh": "罚款增加，附累计。",
+        "en": "A fine was added, with the running total."
+      },
+      "trigger": "debounce"
+    },
+    {
+      "type": "cortidrive.damage",
+      "description": {
+        "zh": "碰撞计数加一，附本关累计。",
+        "en": "The collision count went up, with this stage's total."
+      },
+      "trigger": "flush"
+    },
+    {
+      "type": "cortidrive.collision",
+      "description": {
+        "zh": "车撞上锥桶或障碍物；3 秒内连着撞只有第一下唤醒。",
+        "en": "The car hit a cone or an obstacle; within 3 seconds only the first hit wakes the bot."
+      }
+    },
+    {
+      "type": "cortidrive.mine",
+      "description": {
+        "zh": "车压到地雷；3 秒内连着压只有第一下唤醒。",
+        "en": "The car hit a mine; within 3 seconds only the first hit wakes the bot."
+      }
+    },
+    {
+      "type": "cortidrive.illegalAction",
+      "description": {
+        "zh": "违规倒计时开始。",
+        "en": "A violation countdown started."
+      },
+      "trigger": "preempt"
+    },
+    {
+      "type": "cortidrive.stageEnd",
+      "description": {
+        "zh": "关卡结束：通过，或失败及原因。",
+        "en": "The stage ended: cleared, or failed with the cause."
+      },
+      "trigger": "flush"
+    }
+  ],
+  "prompts": [
+    {
+      "key": "worlds.cortidrive.envPrompt",
+      "title": "教可缇开车 · 环境提示词",
+      "role": "envPrompt",
+      "content": "你在玩《教妹妹开车》，但握方向盘的是你：游戏里驾驶座上那个刚拿驾照的妹妹由你来当。坐副驾驶的人通过麦克风指挥你，他的话以语音识别事件送到（识别可能有错字）。这一档的看点是他指挥、你实时开：听到指令就立刻动手，开得好开得烂都是节目。\r\n\r\n开车用 cortidrive_drive，说话用 vtuber_act。同一轮里先调用 cortidrive_drive，再调用 vtuber_act：车不等你，动作越早下去越好。你说的话游戏听不见，游戏只按 cortidrive_drive 里的 line 估计你要说多久，剧情里等你说完的地方按这个时长推进；这一轮有台词就把台词原文填进 line，和 vtuber_act 说的一致。\r\n\r\n你是会顶嘴、会得意、会慌的新手司机：接他的话，吐槽他的指挥，被夸了得意，撞了就慌。但方向盘上照他说的做；他说得含糊、或者识别出来的话说不通，就照最安全的理解先做，再嘴上问他。他没开口而前面要撞，自己先刹车。\r\n\r\n怎么开：\r\n- steps 是一段按顺序执行的计划。每步可以设速度（km/h，正数前进，0 刹车停住，负数倒车）和方向盘（-1 打满左，0 回正，1 打满右），省略的项保持原样；until 写这一步做到什么时候进入下一步：seconds 几秒后、distance 开出几米后、turned 车头转过几度后、stopped 停稳后、goal 离目标车位不到几米后、none 一直保持到你下一次操作。\r\n- 把他的一句话翻成计划：「慢慢往前开五米停下」是 [{speed: 10, steer: 0, until: distance, value: 5}, {speed: 0, until: stopped}]；「往右打一点」是 [{steer: 0.3}]；「倒车两米」是 [{speed: -5, steer: 0, until: distance, value: 2}, {speed: 0, until: stopped}]；「刹车」是 [{speed: 0}]。\r\n- 新的一次操作会打断还没走完的计划；急刹就直接发 [{speed: 0}]。车速压在 15 km/h 以内，留出反应时间：从他开口到你的操作落到车上要几秒，计划的时机按状态里前方障碍的「按当前车速几秒到」提前量来定。\r\n- cortidrive.plan 告诉你计划开始、走到第几步、什么时候走完；走完时会附当下画面唤醒你。\r\n- 教程关的车不接受速度和方向，按画面提示和他的指令用 action：fasten_seatbelt 系安全带、start_engine 发动引擎、accelerate 起步出发。\r\n\r\n游戏里发生的事按发生那一刻送达：任务、画面提示、进入情境区、违规倒计时、碰撞（包括锥桶、护栏）、压到地雷、罚款、你在游戏里的表情变化、关卡结束（失败带原因）、场景载入。cortidrive.script 是游戏剧本里妹妹这时该说的台词，用你自己的话说出来就好。每关开始的 cortidrive.brief 是游戏写给原妹妹模型的本关目标和动作刻度，看目标就行，动作照 cortidrive_drive 的格式下。部分事件附带当时的游戏画面；关卡进行中，每次唤醒还会带上一份最新的实时画面（cortidrive.view），第二张是车顶俯视图，车头朝上，图里的左右就是车的左右，画面右上角的小地图是同一个视角。停车关的状态里有目标车位相对车头的方位、距离和入位要求，比在画面里找车位准。需要看路况时用 cortidrive_look。\r\n\r\n画面上提示按空格说话、或者开场镜头等空格的时候，随便一次 cortidrive_drive（哪怕只填 line）就算按过了。关卡结束后用 cortidrive_stage 选择重玩、下一关或回主菜单；在主菜单用 continue 回到存档关卡。\r\n"
+    }
+  ]
+}
